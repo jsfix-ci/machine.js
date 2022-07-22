@@ -1,4 +1,4 @@
-import { Observable, of, throwError } from 'rxjs';
+import { lastValueFrom, Observable, of, throwError } from 'rxjs';
 import { catchError, expand, filter, map, mergeMap, startWith, takeWhile } from 'rxjs/operators';
 import { createRange, Range } from '../annotations/range';
 import { Phrase } from '../translation/phrase';
@@ -23,24 +23,21 @@ export class WebApiClient {
   constructor(public http: HttpClient) {}
 
   async translate(projectId: string, sourceSegment: string[]): Promise<TranslationResult> {
-    const response = await this.http
-      .post<TranslationResultDto>(`translation/engines/project:${projectId}/actions/translate`, sourceSegment)
-      .toPromise();
+    const response = await lastValueFrom(this.http
+      .post<TranslationResultDto>(`translation/engines/project:${projectId}/actions/translate`, sourceSegment));
     return this.createTranslationResult(response.data as TranslationResultDto, sourceSegment);
   }
 
   async translateNBest(projectId: string, n: number, sourceSegment: string[]): Promise<TranslationResult[]> {
-    const response = await this.http
-      .post<TranslationResultDto[]>(`translation/engines/project:${projectId}/actions/translate/${n}`, sourceSegment)
-      .toPromise();
+    const response = await lastValueFrom(this.http
+      .post<TranslationResultDto[]>(`translation/engines/project:${projectId}/actions/translate/${n}`, sourceSegment));
     const dtos = response.data as TranslationResultDto[];
     return dtos.map((dto) => this.createTranslationResult(dto, sourceSegment));
   }
 
   async getWordGraph(projectId: string, sourceSegment: string[]): Promise<WordGraph> {
-    const response = await this.http
-      .post<WordGraphDto>(`translation/engines/project:${projectId}/actions/getWordGraph`, sourceSegment)
-      .toPromise();
+    const response = await lastValueFrom(this.http
+      .post<WordGraphDto>(`translation/engines/project:${projectId}/actions/getWordGraph`, sourceSegment));
     return this.createWordGraph(response.data as WordGraphDto);
   }
 
@@ -51,13 +48,12 @@ export class WebApiClient {
     sentenceStart: boolean
   ): Promise<void> {
     const pairDto: SegmentPairDto = { sourceSegment, targetSegment, sentenceStart };
-    await this.http.post(`translation/engines/project:${projectId}/actions/trainSegment`, pairDto).toPromise();
+    await lastValueFrom(this.http.post(`translation/engines/project:${projectId}/actions/trainSegment`, pairDto));
   }
 
   async startTraining(projectId: string): Promise<void> {
-    await this.getEngine(projectId)
-      .pipe(mergeMap((e) => this.createBuild(e.id)))
-      .toPromise();
+    await lastValueFrom(this.getEngine(projectId)
+      .pipe(mergeMap((e) => this.createBuild(e.id))));
   }
 
   train(projectId: string): Observable<ProgressStatus> {
@@ -72,7 +68,7 @@ export class WebApiClient {
   }
 
   async getEngineStats(projectId: string): Promise<TranslationEngineStats> {
-    const engineDto = await this.getEngine(projectId).toPromise();
+    const engineDto = await lastValueFrom(this.getEngine(projectId));
     return { confidence: engineDto.confidence, trainedSegmentCount: engineDto.trainedSegmentCount };
   }
 
